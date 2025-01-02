@@ -1,0 +1,152 @@
+version: '3.8'
+
+services:
+  # VPN Gateway container
+  vpn:
+    container_name: vpn
+    image: ghcr.io/bubuntux/nordvpn
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - TOKEN=${NORD_VPN_TOKEN}
+      - CONNECT=US
+      - NETWORK=192.168.86.0/24
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+    restart: unless-stopped
+    ports:
+      - 8080:8080  # qBittorrent web UI
+      - 9696:9696  # Prowlarr web UI
+      - 8191:8191  # Flaresolverr
+      - 8989:8989  # Sonarr
+      - 7878:7878  # Radarr
+      - 5055:5055  # Overseer
+      - 8787:8787  # Readarr
+      - 5299:5299  #LazyLibrarian
+    volumes:
+      - /media/mediadrive/config/qbittorrent:/config
+      - /media/mediadrive/downloads:/downloads
+      - /media/mediadrive/downloads/watch:/watch
+      - /etc/localtime:/etc/localtime:ro
+
+  qbittorrent:
+    image: linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: "service:vpn"  # Use VPN container's network
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York  # Adjust to your timezone
+      - WEBUI_PORT=8080
+    volumes:
+      - /media/mediadrive/config/qbittorrent:/config
+      - /media/mediadrive/downloads:/downloads
+      - /media/mediadrive/downloads/watch:/watch
+    restart: unless-stopped
+    depends_on:
+      - vpn
+
+  prowlarr:
+    container_name: prowlarr
+    image: linuxserver/prowlarr:latest
+    network_mode: "service:vpn"  # Use VPN container's network
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York
+    volumes:
+      - /media/mediadrive/config/prowlarr:/config
+    restart: unless-stopped
+    depends_on:
+      - vpn
+
+  sonarr:
+    container_name: sonarr
+    image: linuxserver/sonarr:latest
+    network_mode: "service:vpn"
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York
+    volumes:
+      - /media/mediadrive/config/sonarr:/config
+      - /media/mediadrive/media/tv:/tv
+      - /media/mediadrive/downloads:/downloads
+    restart: unless-stopped
+    depends_on:
+      - vpn
+
+  radarr:
+    container_name: radarr
+    image: linuxserver/radarr:latest
+    network_mode: "service:vpn"
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York
+    volumes:
+      - /media/mediadrive/config/radarr:/config
+      - /media/mediadrive/media/movies:/movies
+      - /media/mediadrive/downloads:/downloads
+    restart: unless-stopped
+    depends_on:
+      - vpn
+
+  overseerr:
+    container_name: overseerr
+    image: linuxserver/overseerr:latest
+    network_mode: "service:vpn"
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York
+    volumes:
+      - /media/mediadrive/config/overseerr:/config
+    restart: unless-stopped
+    depends_on:
+      - vpn
+
+  readarr:
+    container_name: readarr
+    image: lscr.io/linuxserver/readarr:develop
+    network_mode: "service:vpn"
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York
+    volumes:
+      - /media/mediadrive/config/readarr:/config
+      - /media/mediadrive/media/books:/books
+      - /media/mediadrive/downloads:/downloads
+    restart: unless-stopped
+    depends_on:
+      - vpn
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    network_mode: "service:vpn"
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=info # Change to debug for more detailed logs
+      - CAPTCHA_SOLVER=none # Optional; add captcha solver service if needed
+    restart: unless-stopped
+    depends_on:
+      - vpn
+
+  lazylibrarian:
+    image: lscr.io/linuxserver/lazylibrarian:latest
+    network_mode: "service:vpn"
+    container_name: lazylibrarian
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York
+    volumes:
+      - /media/mediadrive/config/lazylibrarian:/config
+      - /media/mediadrive/media/books:/books
+      - /media/mediadrive/downloads:/downloads
+    restart: unless-stopped
+    depends_on:
+      - vpn
+    
