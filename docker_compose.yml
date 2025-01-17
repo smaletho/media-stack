@@ -1,20 +1,26 @@
-version: '3.8'
-
 services:
   # VPN Gateway container
   vpn:
     container_name: vpn
-    image: ghcr.io/bubuntux/nordvpn
+    image: ghcr.io/bubuntux/nordlynx
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
     environment:
-      - TOKEN=${NORD_VPN_TOKEN}
+      - PRIVATE_KEY=${NORD_PRIVATE_KEY}
       - CONNECT=US
       - NETWORK=192.168.86.0/24
+      #- RECONNECT=1
+      - CHECK_CONNECTION_INTERVAL=60
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "https://www.google.com" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     ports:
       - 8080:8080  # qBittorrent web UI
       - 9696:9696  # Prowlarr web UI
@@ -45,7 +51,8 @@ services:
       - /media/mediadrive/downloads/watch:/watch
     restart: unless-stopped
     depends_on:
-      - vpn
+      vpn:
+        condition: service_healthy
 
   prowlarr:
     container_name: prowlarr
@@ -59,7 +66,8 @@ services:
       - /media/mediadrive/config/prowlarr:/config
     restart: unless-stopped
     depends_on:
-      - vpn
+      vpn:
+        condition: service_healthy
 
   sonarr:
     container_name: sonarr
@@ -75,7 +83,8 @@ services:
       - /media/mediadrive/downloads:/downloads
     restart: unless-stopped
     depends_on:
-      - vpn
+      vpn:
+        condition: service_healthy
 
   radarr:
     container_name: radarr
@@ -91,7 +100,8 @@ services:
       - /media/mediadrive/downloads:/downloads
     restart: unless-stopped
     depends_on:
-      - vpn
+      vpn:
+        condition: service_healthy
 
   overseerr:
     container_name: overseerr
@@ -105,48 +115,54 @@ services:
       - /media/mediadrive/config/overseerr:/config
     restart: unless-stopped
     depends_on:
-      - vpn
-
-  readarr:
-    container_name: readarr
-    image: lscr.io/linuxserver/readarr:develop
-    network_mode: "service:vpn"
-    environment:
-      - PUID=1001
-      - PGID=1001
-      - TZ=America/New_York
-    volumes:
-      - /media/mediadrive/config/readarr:/config
-      - /media/mediadrive/media/books:/books
-      - /media/mediadrive/downloads:/downloads
-    restart: unless-stopped
-    depends_on:
-      - vpn
+      vpn:
+        condition: service_healthy
 
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     network_mode: "service:vpn"
     container_name: flaresolverr
     environment:
-      - LOG_LEVEL=info # Change to debug for more detailed logs
-      - CAPTCHA_SOLVER=none # Optional; add captcha solver service if needed
+      - LOG_LEVEL=info
+      - CAPTCHA_SOLVER=none
+      - TEST_URL=https://www.google.com  # Add this to test connectivity
+      - BROWSER_TIMEOUT=40000  # Increase timeout
+      - PROXY_SERVER=  # Leave empty to use direct connection through VPN
     restart: unless-stopped
     depends_on:
-      - vpn
+      vpn:
+        condition: service_healthy
 
-  lazylibrarian:
-    image: lscr.io/linuxserver/lazylibrarian:latest
-    network_mode: "service:vpn"
-    container_name: lazylibrarian
-    environment:
-      - PUID=1001
-      - PGID=1001
-      - TZ=America/New_York
-    volumes:
-      - /media/mediadrive/config/lazylibrarian:/config
-      - /media/mediadrive/media/books:/books
-      - /media/mediadrive/downloads:/downloads
-    restart: unless-stopped
-    depends_on:
-      - vpn
+  # lazylibrarian:
+  #   image: lscr.io/linuxserver/lazylibrarian:latest
+  #   network_mode: "service:vpn"
+  #   container_name: lazylibrarian
+  #   environment:
+  #     - PUID=1001
+  #     - PGID=1001
+  #     - TZ=America/New_York
+  #   volumes:
+  #     - /media/mediadrive/config/lazylibrarian:/config
+  #     - /media/mediadrive/media/books:/books
+  #     - /media/mediadrive/downloads:/downloads
+  #   restart: unless-stopped
+  #   depends_on:
+  #     vpn:
+  #       condition: service_healthy
     
+  # readarr:
+  #   container_name: readarr
+  #   image: lscr.io/linuxserver/readarr:develop
+  #   network_mode: "service:vpn"
+  #   environment:
+  #     - PUID=1001
+  #     - PGID=1001
+  #     - TZ=America/New_York
+  #   volumes:
+  #     - /media/mediadrive/config/readarr:/config
+  #     - /media/mediadrive/media/books:/books
+  #     - /media/mediadrive/downloads:/downloads
+  #   restart: unless-stopped
+  #   depends_on:
+  #     vpn:
+  #       condition: service_healthy
