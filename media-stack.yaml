@@ -1,0 +1,166 @@
+services:
+
+  plex:
+    image: linuxserver/plex:latest
+    container_name: plex
+    network_mode: host
+    devices:
+      - /dev/dvb:/dev/dvb
+      - /dev/dri:/dev/dri  # Intel QuickSync hardware acceleration
+
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+    group_add:
+      - "video"
+      - "109"
+    privileged: true
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York
+    volumes:
+      - /home/tom/MediaStack/config/plex:/config
+      - /media:/media
+    restart: unless-stopped
+
+  tdarr:
+    container_name: tdarr
+    image: ghcr.io/haveagitgat/tdarr:latest
+    network_mode: "container:shared-vpn"
+
+    environment:
+      - PUID=1001  # Change to your user ID
+      - PGID=1001  # Change to your group ID
+      - TZ=America/New_York  # Change to your timezone
+      - UMASK_SET=022
+      - serverIP=0.0.0.0
+      - serverPort=8266
+      - webUIPort=8265
+      - internalNode=true
+      - nodeID=MainNode
+    volumes:
+      - /home/tom/MediaStack/config/tdarr/server:/app/server
+      - /home/tom/MediaStack/config/tdarr/config:/app/configs
+      - /home/tom/MediaStack/config/tdarr/logs:/app/logs
+      # Media directories - adjust these to match your setup
+      - /media/videos/media/movies:/movies
+      - /media/videos/media/tv:/tv
+      # Temporary transcoding directory (should be fast storage if possible)
+      - /home/tom/MediaStack/config/tdarr/temp:/temp
+      - /home/tom/scripts:/shared-scripts:ro
+    healthcheck:
+      test: ["CMD", "/shared-scripts/vpn_healthcheck.sh"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    devices:
+      - /dev/dri:/dev/dri  # Intel QuickSync hardware acceleration
+    group_add:
+      - "109"
+
+
+  qbittorrent:
+    image: linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: "container:shared-vpn"
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York  # Adjust to your timezone
+      - WEBUI_PORT=8080
+    volumes:
+      - /home/tom/MediaStack/config/qbittorrent:/config
+      - /media:/media
+      - /home/tom/scripts:/shared-scripts:ro
+    healthcheck:
+      test: ["CMD", "/shared-scripts/vpn_healthcheck.sh"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  prowlarr:
+    container_name: prowlarr
+    image: linuxserver/prowlarr:latest
+    network_mode: "container:shared-vpn"
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York
+    volumes:
+      - /home/tom/MediaStack/config/prowlarr:/config
+      - /home/tom/scripts:/shared-scripts:ro
+    healthcheck:
+      test: ["CMD", "/shared-scripts/vpn_healthcheck.sh"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  sonarr:
+    container_name: sonarr
+    image: linuxserver/sonarr:latest
+    network_mode: "container:shared-vpn"
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York
+    volumes:
+      - /home/tom/MediaStack/config/sonarr:/config
+      - /media:/media
+      - /home/tom/scripts:/shared-scripts:ro
+    healthcheck:
+      test: ["CMD", "/shared-scripts/vpn_healthcheck.sh"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  radarr:
+    container_name: radarr
+    image: linuxserver/radarr:latest
+    network_mode: "container:shared-vpn"
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York
+    volumes:
+      - /home/tom/MediaStack/config/radarr:/config
+      - /media:/media
+      - /home/tom/scripts:/shared-scripts:ro
+    healthcheck:
+      test: ["CMD", "/shared-scripts/vpn_healthcheck.sh"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    network_mode: "container:shared-vpn"
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=info
+      - CAPTCHA_SOLVER=none
+      - TEST_URL=https://www.google.com  # Add this to test connectivity
+      - BROWSER_TIMEOUT=40000  # Increase timeout
+      - PROXY_SERVER=  # Leave empty to use direct connection through VPN
+    volumes:
+      - /home/tom/scripts:/shared-scripts:ro
+    healthcheck:
+      test: ["CMD", "/shared-scripts/vpn_healthcheck.sh"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+

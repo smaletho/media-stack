@@ -1,0 +1,45 @@
+services:
+  nordlynx:
+    image: ghcr.io/bubuntux/nordlynx
+    container_name: shared-vpn
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PRIVATE_KEY=${NORD_PRIVATE_KEY}
+      - CONNECT=US
+      - NETWORK=192.168.86.0/24
+      #- RECONNECT=1
+      - CHECK_CONNECTION_INTERVAL=60
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv6.conf.all.disable_ipv6=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "https://www.google.com" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    ports:
+      - 8080:8080  # qBittorrent web UI
+      - 9696:9696  # Prowlarrt
+      - 8191:8191  # Flaresolverr
+      - 8989:8989  # Sonarr
+      - 7878:7878  # Radarr
+      - 5055:5055  # Overseer
+      - 8265:8265  # Tdarr Web UI
+      - 8266:8266  # Tdarr Server port
+    volumes:
+      - /home/tom/MediaStack/config/qbittorrent:/config
+      - /media:/media
+      - /etc/localtime:/etc/localtime:ro
+      - /lib/modules:/lib/modules:ro
+    networks:
+      vpn-network:
+        ipv4_address: 172.21.0.2  # Assign a static IP within your network range
+
+networks:
+  vpn-network:
+    external: true
+    name: vpn-network  # Must match exactly what you named your network
