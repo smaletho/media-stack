@@ -1,5 +1,3 @@
-# Notes:
-
 ## Overview
 
 This is a media stack that I use to host Plex and "Arr" apps for TV shows and movies. Necessary traffic is routed through the VPN stack for privacy.
@@ -48,16 +46,16 @@ This is the main media server where you will configure your libraries for TV and
 	- This gives the container access to the GPU for hardware acceleration when transcoding files.
 	- Depending on your host machine, you may need to modify this line, but without access for transcoding, Plex will fail to play certain media on certain devices.
 	
-*`network_mode: host`*
+**`network_mode: host`**
 Plex must use the host network and is not routed through the VPN so that the Plex server can be accessed remotely. You may need to open some firewall ports to get this working.
 
-*Resources*
+**Resources**
 Give Plex a bit of extra power for processing media.
 
-*`group_add`*
+**`group_add`**
 These also relate to the Devices section, giving access to the GPU and antenna.
 
-*Volumes*
+**Volumes**
 I like persistent files for my configs so I keep those outside of the container storage. 
 
 `- /media:/media`. This is the root folder containing my media files. It is an external drive, mounted to the /media directory. When you set up your Plex libraries, you will go in this folder and select the sub-folder containing the library.
