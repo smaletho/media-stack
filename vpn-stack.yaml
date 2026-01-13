@@ -30,6 +30,7 @@ services:
       - 5055:5055  # Overseer
       - 8265:8265  # Tdarr Web UI
       - 8266:8266  # Tdarr Server port
+      - 8945:8945  # Pinchflat
     volumes:
       - /home/tom/MediaStack/config/qbittorrent:/config
       - /media:/media
