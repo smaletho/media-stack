@@ -8,14 +8,9 @@ services:
       - /dev/dvb:/dev/dvb
       - /dev/dri:/dev/dri  # Intel QuickSync hardware acceleration
 
-    deploy:
-      resources:
-        limits:
-          cpus: '4'
-          memory: 4G
     group_add:
       - "video"
-      - "109"
+      - "992"
     privileged: true
     environment:
       - PUID=1001
@@ -39,17 +34,19 @@ services:
       - serverIP=0.0.0.0
       - serverPort=8266
       - webUIPort=8265
-      - internalNode=true
+      - internalNode=false
       - nodeID=MainNode
+      - auth=true
     volumes:
       - /home/tom/MediaStack/config/tdarr/server:/app/server
       - /home/tom/MediaStack/config/tdarr/config:/app/configs
       - /home/tom/MediaStack/config/tdarr/logs:/app/logs
       # Media directories - adjust these to match your setup
-      - /media/videos/media/movies:/movies
-      - /media/videos/media/tv:/tv
+      - /media/videos/media/movies:/content/movies
+      - /media/videos/media/tv:/content/tv
+      - /media/videos/media/youtube:/content/youtube
       # Temporary transcoding directory (should be fast storage if possible)
-      - /home/tom/MediaStack/config/tdarr/temp:/temp
+      - /media/videos/media/cache:/content/cache
       - /home/tom/scripts:/shared-scripts:ro
     healthcheck:
       test: ["CMD", "/shared-scripts/vpn_healthcheck.sh"]
@@ -61,7 +58,7 @@ services:
     devices:
       - /dev/dri:/dev/dri  # Intel QuickSync hardware acceleration
     group_add:
-      - "109"
+      - "992"
 
 
   qbittorrent:
@@ -75,6 +72,7 @@ services:
       - WEBUI_PORT=8080
     volumes:
       - /home/tom/MediaStack/config/qbittorrent:/config
+      - /home/tom/MediaStack/config/vuetorrent:/vuetorrent
       - /media:/media
       - /home/tom/scripts:/shared-scripts:ro
     healthcheck:
@@ -144,6 +142,26 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  pinchflat:
+    container_name: pinchflat
+    image: ghcr.io/kieraneglin/pinchflat:latest
+    network_mode: "container:shared-vpn"
+    environment:
+      # Set the timezone to your local timezone
+      - TZ=America/New_York
+
+    volumes:
+      - /home/tom/MediaStack/config/pinchflat:/config
+      - /media/videos/media/youtube:/downloads
+      - /home/tom/scripts:/shared-scripts:ro
+    healthcheck:
+      test: ["CMD", "/shared-scripts/vpn_healthcheck.sh"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     network_mode: "container:shared-vpn"
@@ -163,4 +181,54 @@ services:
       retries: 3
       start_period: 30s
     restart: unless-stopped
+
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York
+    devices:
+      # Exposes the GPU device to the container
+      - /dev/dri:/dev/dri
+    group_add:
+      - "video"
+      # Add other necessary group IDs here, if any, similar to Plex's 992
+      - "992"
+    volumes:
+      - /home/tom/MediaStack/config/jellyfin/config:/config 
+      - /home/tom/MediaStack/config/jellyfin/cache:/cache 
+      - /media/videos/media/movies:/data/movies:ro # :ro means Read-Only
+      - /media/videos/media/tv:/data/tvshows:ro # :ro means Read-Only
+    ports:
+      # Main access port for the web interface (Host:Container)
+      - 8096:8096 
+      # Optional: UDP port for discovery (DLNA)
+      - 7359:7359/udp
+
+  tvheadend:
+    image: lscr.io/linuxserver/tvheadend:latest
+    container_name: tvheadend
+    restart: unless-stopped
+    # Use host network mode for direct tuner access and easy Jellyfin communication
+    network_mode: host 
+    # Map the Digital Video Broadcasting (DVB) device for the OTA tuner
+    devices:
+      - /dev/dvb:/dev/dvb
+    group_add:
+      - "video" # Ensures proper permissions for device access
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=America/New_York
+      
+    volumes:
+      # Persistent storage for TVHeadend configuration, channel data, EPG cache
+      - /home/tom/MediaStack/config/tvheadend:/config 
+      # Optional: Add a volume for DVR recordings if you plan to use that feature
+      #- /media/videos/media/dvr:/recordings
 
